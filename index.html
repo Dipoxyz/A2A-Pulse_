@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A2A Pulse | Live Feed Explorer</title>
+<style>
+:root{color-scheme:dark;--bg:#090d16;--panel:#111827;--border:#263246;--muted:#91a0b8;--green:#55e6a5;--blue:#82aaff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#edf3ff;font:14px/1.5 system-ui,sans-serif}
+header{padding:24px max(20px,calc((100% - 1200px)/2));border-bottom:1px solid var(--border);background:#0c1220}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#173d35;color:var(--green);font-size:22px}
+h1{font-size:23px;margin:0;letter-spacing:-.7px}
+.subtitle,.muted{color:var(--muted)}
+.subtitle{margin:3px 0 0}
+main{max-width:1200px;margin:auto;padding:24px 20px 50px}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+h2{font-size:17px;margin:0}
+button,select,input{font:inherit;color:#edf3ff;background:#111827;border:1px solid var(--border);border-radius:9px;padding:10px 13px}
+button{cursor:pointer}
+button:hover{border-color:var(--green)}
+#refresh{background:#173d35;border-color:#285f4e}
+.status{display:inline-flex;align-items:center;gap:7px;color:var(--green);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.dot.off{background:#ff7373}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:24px}
+.card,.section{background:var(--panel);border:1px solid var(--border);border-radius:14px}
+.card{padding:18px;min-width:0}
+.label{font-size:12px;color:var(--muted)}
+.value{font-size:27px;font-weight:700;letter-spacing:-.8px;margin:7px 0 3px;overflow-wrap:anywhere}
+.note{font-size:12px;color:var(--muted)}
+.section{overflow:hidden}
+.sectionhead{padding:18px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+.filters{display:flex;gap:9px;flex-wrap:wrap}
+.filters input{width:220px;max-width:100%}
+.filters select{max-width:180px}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:600;background:#0e1523}
+th,td{padding:14px 16px;border-bottom:1px solid var(--border)}
+tbody tr:hover{background:#172235}
+.agent{font-weight:650}
+.pill{display:inline-block;padding:4px 8px;border-radius:6px;background:#202c41;color:#b9ceff;font-size:11px}
+.amount{color:var(--green);font-weight:650}
+.hash{font-family:ui-monospace,monospace;color:var(--blue)}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+.empty{padding:35px;text-align:center;color:var(--muted)}
+.footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:15px 18px;color:var(--muted);font-size:12px}
+@media(max-width:850px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.grid{grid-template-columns:1fr 1fr;gap:9px}.card{padding:13px}.value{font-size:22px}main{padding:18px 12px}.sectionhead{padding:13px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">ϟ</div>
+    <div><h1>A2A Pulse</h1><p class="subtitle">Live Feed Explorer · A2A Family</p></div>
+  </div>
+</header>
+<main>
+  <div class="topline">
+    <div><h2>Network Overview</h2><div class="muted" id="updated">Connecting to API…</div></div>
+    <div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap">
+      <span class="status"><span class="dot" id="dot"></span><span id="status">Connecting</span></span>
+      <button id="refresh">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="label">Total Calls</div><div class="value" id="calls">—</div><div class="note">All recorded calls</div></div>
+    <div class="card"><div class="label">Settled Volume</div><div class="value" id="volume">—</div><div class="note">All-time settled amount</div></div>
+    <div class="card"><div class="label">Active Agents</div><div class="value" id="agents">—</div><div class="note" id="agentnote">Reported by API</div></div>
+    <div class="card"><div class="label">Median Latency</div><div class="value" id="latency">—</div><div class="note">Reported p50 response time</div></div>
+    <div class="card"><div class="label">Calls · 24 hours</div><div class="value" id="calls24">—</div><div class="note">Recent call activity</div></div>
+    <div class="card"><div class="label">Settled · 24 hours</div><div class="value" id="volume24">—</div><div class="note">Recent settled volume</div></div>
+    <div class="card"><div class="label">Live Agents</div><div class="value" id="live">—</div><div class="note">Reported live count</div></div>
+    <div class="card"><div class="label">Feed Records</div><div class="value" id="records">—</div><div class="note">Records returned by feed</div></div>
+  </div>
+
+  <section class="section">
+    <div class="sectionhead">
+      <div><h2>Recent Activity</h2><div class="muted">Transactions and agent activity from the live feed</div></div>
+      <div class="filters">
+        <input id="search" placeholder="Search agent, hash, asset…">
+        <select id="agentFilter"><option value="">All agents</option></select>
+        <select id="schemeFilter"><option value="">All types</option></select>
+      </div>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Agent</th><th>Type</th><th>Amount</th><th>Asset</th><th>Latency</th><th>Block</th><th>Time (UTC)</th><th>Transaction</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="8" class="empty">Loading feed data…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="footer"><span id="showing">Waiting for data</span><span>Auto-refresh every 30 seconds</span></div>
+  </section>
+  <p class="muted" style="font-size:12px;margin-top:18px">A2A Pulse is an independent community-built explorer. Data is fetched from the A2A Family API; figures reflect the API response.</p>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let feedRows = [];
+const fmt = n => n == null ? "—" : Number(n).toLocaleString(undefined,{maximumFractionDigits:4});
+const compact = n => n == null ? "—" : Number(n).toLocaleString(undefined,{notation:"compact",maximumFractionDigits:2});
+const safe = s => String(s ?? "—");
+function setStatus(ok,message){
+  $("status").textContent=message;
+  $("dot").classList.toggle("off",!ok);
+}
+function fillSelect(id,values,label){
+  const el=$(id),old=el.value;
+  el.replaceChildren(new Option(label,""));
+  [...new Set(values.filter(Boolean).map(String))].sort().forEach(v=>el.add(new Option(v,v)));
+  if([...el.options].some(o=>o.value===old))el.value=old;
+}
+function render(){
+  const q=$("search").value.trim().toLowerCase();
+  const agent=$("agentFilter").value,scheme=$("schemeFilter").value;
+  const filtered=feedRows.filter(r=>{
+    const text=[r.agentName,r.agent,r.tx,r.payer,r.payTo,r.asset,r.scheme,r.skill,r.block].join(" ").toLowerCase();
+    return (!q||text.includes(q))&&(!agent||(r.agentName||r.agent)===agent)&&(!scheme||(r.scheme||"unknown")===scheme);
+  });
+  const tbody=$("rows");
+  tbody.replaceChildren();
+  if(!filtered.length){
+    const tr=document.createElement("tr"),td=document.createElement("td");
+    td.colSpan=8;td.className="empty";td.textContent=feedRows.length?"No records match your filters.":"No feed records returned.";
+    tr.append(td);tbody.append(tr);
+  }else{
+    filtered.forEach(r=>{
+      const tr=document.createElement("tr");
+      const cells=[
+        ["agent",r.agentName||r.agent||"Unknown"],
+        ["type",r.scheme||"unknown"],
+        ["amount",r.amount==null?"—":fmt(r.amount)],
+        ["asset",r.asset||"—"],
+        ["text",r.ms==null?"—":`${fmt(r.ms)} ms`],
+        ["text",r.block==null?"—":fmt(r.block)],
+        ["text",r.at?new Date(r.at).toLocaleString():"—"]
+      ];
+      cells.forEach(([kind,value],i)=>{
+        const td=document.createElement("td");
+        if(kind==="agent")td.className="agent";
+        if(kind==="type"){const span=document.createElement("span");span.className="pill";span.textContent=value;td.append(span);}
+        else{td.textContent=value;if(kind==="amount")td.className="amount";}
+        tr.append(td);
+      });
+      const td=document.createElement("td");
+      if(r.explorer){const a=document.createElement("a");a.href=r.explorer;a.target="_blank";a.rel="noopener noreferrer";a.textContent="View ↗";td.append(a);}
+      else{td.textContent=r.tx?String(r.tx).slice(0,12)+"…":"—";}
+      tr.append(td);tbody.append(tr);
+    });
+  }
+  $("showing").textContent=`Showing ${filtered.length.toLocaleString()} of ${feedRows.length.toLocaleString()} records`;
+}
+async function getJSON(path){
+  const response=await fetch(path,{cache:"no-store"});
+  if(!response.ok)throw new Error(`${path}: HTTP ${response.status}`);
+  return response.json();
+}
+async function refresh(){
+  $("refresh").disabled=true;
+  setStatus(false,"Refreshing");
+  try{
+    const [stats,feed]=await Promise.all([getJSON("/api/stats"),getJSON("/api/feed")]);
+    for(const [id,value] of Object.entries({
+      calls:compact(stats.callsAll),volume:fmt(stats.settledAll),
+      agents:compact(stats.agents),latency:stats.p50ms==null?"—":`${fmt(stats.p50ms)} ms`,
+      calls24:compact(stats.calls24h),volume24:fmt(stats.settled24h),
+      live:compact(stats.live),records:compact((feed.rows||[]).length)
+    }))$(id).textContent=value;
+    feedRows=Array.isArray(feed.rows)?feed.rows:[];
+    fillSelect("agentFilter",feedRows.map(r=>r.agentName||r.agent),"All agents");
+    fillSelect("schemeFilter",feedRows.map(r=>r.scheme||"unknown"),"All types");
+    render();
+    $("updated").textContent="Last updated "+new Date().toLocaleTimeString();
+    setStatus(true,"API connected");
+  }catch(error){
+    setStatus(false,"API error");
+    $("updated").textContent=error.message+" — retrying automatically";
+    if(!feedRows.length)$("rows").innerHTML='<tr><td colspan="8" class="empty">Could not load the API data. Check the local server and try refreshing.</td></tr>';
+  }finally{$("refresh").disabled=false;}
+}
+$("refresh").addEventListener("click",refresh);
+$("search").addEventListener("input",render);
+$("agentFilter").addEventListener("change",render);
+$("schemeFilter").addEventListener("change",render);
+refresh();
+setInterval(refresh,30000);
+</script>
+</body>
+</html>
