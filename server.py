@@ -1,4 +1,5 @@
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+import os
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 import json
@@ -33,4 +34,5 @@ class Handler(SimpleHTTPRequestHandler):
         super().do_GET()
 
 print("A2A Pulse running on port 8000")
-ThreadingHTTPServer(("0.0.0.0", 8000), Handler).serve_forever()
+port = int(os.environ.get("PORT", "8000"))
+ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
